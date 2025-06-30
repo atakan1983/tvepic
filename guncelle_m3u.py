@@ -5,6 +5,7 @@ import difflib
 epg_xml = "kabloepg.xml"
 input_m3u = "mehmet.m3u"
 output_m3u = "mehmet_guncel.m3u"
+epg_url = "https://raw.githubusercontent.com/atakan1983/tvepic/refs/heads/main/kabloepg.xml"
 
 # EPG'den display-name -> id haritası
 displayname_to_id = {}
@@ -25,12 +26,20 @@ for channel in root.findall("channel"):
 with open(input_m3u, "r", encoding="utf-8") as f:
     lines = f.readlines()
 
-new_lines = []
-i = 0
+# EPG URL'siyle #EXTM3U satırını hazırla
+extm3u_line = f'#EXTM3U url-tvg="{epg_url}"\n'
+
+# Eğer ilk satırda #EXTM3U varsa güncelle, yoksa ekle
+if lines and lines[0].startswith("#EXTM3U"):
+    lines[0] = extm3u_line
+else:
+    lines = [extm3u_line] + lines
+
+new_lines = [lines[0]]
+i = 1
 while i < len(lines):
     line = lines[i]
     if line.startswith("#EXTINF"):
-        # tvg-name veya satır sonundaki ismi bul
         tvg_name_match = re.search(r'tvg-name="([^"]+)"', line)
         ext_name_match = re.search(r',(.+)$', line)
         old_name = None
