@@ -1,41 +1,26 @@
 import xml.etree.ElementTree as ET
-import difflib
 import re
-import unicodedata
+import difflib
 
-def normalize(name):
-    if not name:
-        return ""
-    table = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
-    name = name.translate(table)
-    name = name.lower()
-    name = unicodedata.normalize("NFKD", name)
-    name = re.sub(r'[\W_]+', '', name)  # harf ve rakam dışı her şeyi kaldır
-    return name
-
-# Dosya yolları
 epg_xml = "kabloepg.xml"
 input_m3u = "mehmet.m3u"
 output_m3u = "mehmet_guncel.m3u"
 
+# EPG'den display-name -> id haritası
+displayname_to_id = {}
+epg_names = []
+
 tree = ET.parse(epg_xml)
 root = tree.getroot()
-
-id_name_map = {}
-name_id_map = {}
-epg_names = []
-epg_names_normalized = []
 
 for channel in root.findall("channel"):
     ch_id = channel.attrib.get("id")
     ch_name = channel.findtext("display-name")
     if ch_id and ch_name:
-        ch_id = ch_id.strip()
         ch_name = ch_name.strip()
-        id_name_map[ch_id] = ch_name
-        name_id_map[ch_name] = ch_id
+        ch_id = ch_id.strip()
+        displayname_to_id[ch_name] = ch_id
         epg_names.append(ch_name)
-        epg_names_normalized.append(normalize(ch_name))
 
 with open(input_m3u, "r", encoding="utf-8") as f:
     lines = f.readlines()
@@ -45,24 +30,24 @@ i = 0
 while i < len(lines):
     line = lines[i]
     if line.startswith("#EXTINF"):
+        # tvg-name veya satır sonundaki ismi bul
         tvg_name_match = re.search(r'tvg-name="([^"]+)"', line)
-        tvg_id_match = re.search(r'tvg-id="([^"]+)"', line)
+        ext_name_match = re.search(r',(.+)$', line)
+        old_name = None
+        if tvg_name_match:
+            old_name = tvg_name_match.group(1).strip()
+        elif ext_name_match:
+            old_name = ext_name_match.group(1).strip()
 
-        old_name = tvg_name_match.group(1).strip() if tvg_name_match else None
-        old_id = tvg_id_match.group(1).strip() if tvg_id_match else None
-
+        # EPG display-name'lere en yakınını bul
         new_name = old_name
-        new_id = old_id
-
-        # Kanalları normalize ederek eşleşme yap
+        new_id = None
         if old_name:
-            norm = normalize(old_name)
-            matches = difflib.get_close_matches(norm, epg_names_normalized, n=1, cutoff=0.7)
+            matches = difflib.get_close_matches(old_name, epg_names, n=1, cutoff=0.6)
             if matches:
-                match_norm = matches[0]
-                idx = epg_names_normalized.index(match_norm)
-                new_name = epg_names[idx]
-                new_id = name_id_map[new_name]
+                new_name = matches[0]
+                new_id = displayname_to_id[new_name]
+
         # tvg-name ve tvg-id güncelle
         if new_name:
             line = re.sub(r'tvg-name="([^"]*)"', f'tvg-name="{new_name}"', line)
