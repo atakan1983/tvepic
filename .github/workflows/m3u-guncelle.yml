@@ -3,7 +3,7 @@ name: M3U Güncelle
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 4 * * *'
+    - cron: '0 */3 * * *'
 
 jobs:
   m3u-guncelle:
