@@ -2,7 +2,7 @@ name: Kablo EPG Bot
 
 on:
   schedule:
-    - cron: '0 3 * * *' # Her gün saat 06:00 Türkiye, 03:00 UTC
+    - cron: '0 */3 * * *' # Her 3 saatte bir (UTC)
   workflow_dispatch:
 
 jobs:
@@ -33,5 +33,4 @@ jobs:
           git commit -m "Güncel EPG XML [bot]" || echo "No changes to commit"
           git push
         env:
-          # Github Actions'ın kendi tokenı ile push işlemi
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
